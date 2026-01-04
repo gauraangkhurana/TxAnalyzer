@@ -1,0 +1,36 @@
+services:
+  database:
+    # Build the image using the Dockerfile in /db
+    build: ./db
+    container_name: sqlite-database
+    # Default dir when you exec
+    working_dir: /app/data
+    # Creating some env_vars
+    environment:
+      - DB_PATH=/app/data/database.db
+    # Bind mounts for the data
+    volumes:
+    - ./db/scripts:/app/scripts
+    - ./db/data:/app/data
+    # Interactive mode
+    stdin_open: false
+    tty: false
+    # Cmd to run at startup
+    entrypoint: >
+      sh -c "sqlite3 $$DB_PATH < /app/scripts/init.sql && 
+             tail -f /dev/null"
+
+  # Nginx serving as API Gateway
+  api-gateway:
+    build: ./gateway
+    container_name: nginx-api-gateway
+    ports:
+      - "8080:80"
+    volumes: 
+    - ./gateway/data/www:/data/www
+    - ./gateway/data/images:/data/images
+    - ./gateway/nginx.conf:/etc/nginx/nginx.conf
+    # Interactive mode
+    stdin_open: false
+    tty: false
+      
