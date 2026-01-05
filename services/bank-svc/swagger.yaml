@@ -33,7 +33,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SaveNewBankRequest'
       responses:
-        '200':
+        '201':
           description: Financial Institution successfully saved
           content:
             application/json:
@@ -52,7 +52,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetFinancialInstitutionsResponse'
+                $ref: '#/components/schemas/FinancialInstitutionsResponse'
         '400':
           description: Invalid request
         '500':
@@ -115,6 +115,26 @@ components:
         access_token:
           type: string
 
+    FinancialInstitutionsResponse:
+      type: object
+      required:
+        - banks
+      properties:
+        banks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankItem'
+    BankItem:
+      type: object
+      required:
+        - bank_id
+        - bank_name
+      properties:
+        bank_id:
+          type: integer
+        bank_name:
+          type: string
+
     UserFinancialProfile:
       type: object
       required:
@@ -125,9 +145,9 @@ components:
         banks:
           type: array
           items:
-            $ref: '#/components/schemas/BankInformation'
+            $ref: '#/components/schemas/UserAccountInfo'
     
-    BankInformation:
+    UserAccountInfo:
       type: object
       required:
         - bank_name
