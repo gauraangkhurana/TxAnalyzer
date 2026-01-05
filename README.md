@@ -16,6 +16,8 @@ This is a web application that lets you analyze your spending
 
 - Distributed Tracing (be able to understand how much time is taken by the requests)
 - API Gateaway (leverage rate-limiting and auth offered by the API Gateway)
+- Logging
+- ELK Stack
 - Sessions? Evaluate if needed and how those could be utilized
 
 
