@@ -26,7 +26,7 @@ Swagger UI is hosted here
 
 ### How to Run
 
-docker compose up
+`docker compose up`
 
 Pre-requisites: 
 - docker 
