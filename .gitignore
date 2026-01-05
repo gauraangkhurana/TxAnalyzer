@@ -1,0 +1,2 @@
+# Ignore the data inside the db
+./db/data/*.db
