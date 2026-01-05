@@ -8,7 +8,7 @@ This is a web application that lets you analyze your spending
 ### Objectives
 
 - I am learning AI as a part of this project. By using a smart model to categorize my spend
-- I am learning software development and new tools as a part of this project
+- I am learning software development, architecture design & new tools as a part of this project
 - I want this tool for personal use
 
 
