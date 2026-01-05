@@ -22,3 +22,11 @@ This is a web application that lets you analyze your spending
 ### API Docs
 
 Swagger UI is hosted here 
+
+
+### How to Run
+
+docker compose up
+
+Pre-requisites: 
+- docker 
