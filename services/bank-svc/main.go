@@ -5,6 +5,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
@@ -14,8 +15,9 @@ import (
 
 func main() {
 
+	db_path := os.Getenv("DB_PATH")
 	// Open the database connection
-	db, err := sql.Open("sqlite3", "../../db/data/database.db")
+	db, err := sql.Open("sqlite3", db_path)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -33,7 +35,17 @@ func main() {
 	bankHandler := handler.NewBankHandler(db)
 	api.RegisterHandlers(r, bankHandler)
 
+	// prepare server config
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "10001"
+	}
+	addr := ":" + port
+
 	// Start the server on 8080
 	// Server will listen on localhost
-	r.Run("0.0.0.0:10001")
+	log.Printf("Starting the server on %s", addr)
+	if err := r.Run(addr); err != nil {
+		log.Fatalf("Error starting bank-svc")
+	}
 }

@@ -33,4 +33,21 @@ services:
     # Interactive mode
     stdin_open: false
     tty: false
-      
+    depends_on:
+      - bank-svc
+
+  # Bank-svc for all bank related APIs
+  bank-svc:
+    build: ./services/bank-svc
+    container_name: bank-svc
+    ports:
+      - "10001:10001"
+    volumes:
+    - ./db/data/database.db:/app/data/database.db
+    environment:
+      - DB_PATH=/app/data/database.db
+      - PORT=10001
+    depends_on:
+      - database
+    entrypoint: >
+      sh -c "./main"
