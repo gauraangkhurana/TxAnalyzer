@@ -20,7 +20,7 @@ import (
 
 // Account defines model for Account.
 type Account struct {
-	AccountId   int    `json:"account_id"`
+	AccountId   string `json:"account_id"`
 	AccountType string `json:"account_type"`
 }
 
@@ -37,10 +37,10 @@ type FinancialInstitutionsResponse struct {
 
 // SaveNewAccountRequest defines model for SaveNewAccountRequest.
 type SaveNewAccountRequest struct {
-	AccessToken string    `json:"access_token"`
-	Accounts    []Account `json:"accounts"`
-	BankName    string    `json:"bank_name"`
-	UserId      int       `json:"user_id"`
+	AccessToken string  `json:"access_token"`
+	Accounts    Account `json:"accounts"`
+	BankName    string  `json:"bank_name"`
+	UserId      int     `json:"user_id"`
 }
 
 // SaveNewBankRequest defines model for SaveNewBankRequest.
@@ -196,19 +196,19 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xVS2/bOBD+K8TsAnsRImcfF+0p2W0DoUAbJOgpCAJGGtuMJVIZjhwYhv57QcqSZYdy",
-	"HTQuejItPuZ7zGMNmSkro1GzhWQNNptjKf3yIstMrdktKzIVEiv0G7LdeFC5+8erCiEBpRlnSNBE/X67",
-	"05+wTErPoGkiIHyuFWEOyd3wtb2r91F31Tw+Ycbu7UupFylj+RrVo9SLUUh+U8vyCDzdO8NLISQflZY6",
-	"U7JItWXFNSuj7Q3aymiLYXh+oRhLv/idcAoJ/BZvHYg38sc9zaaPLInkKojWBvHdyiV+xpeNizf4XKMN",
-	"m4nWPrBZoA6I01tyPPYub15BP2xDBLVFGnFwj3V3cvjiAGm0y+qAOk7nUWnemjSjqbIT7FCCHMe+OxkK",
-	"9dUibQxI9dT8wn6PKvg2Ix3hvhSvyUxV8cPVty9igNnxuTpWoe6c2liUo81IVa6FQAIX16kVPJcsSqnl",
-	"DMW04yfUtteIF0MLiIAVO8a+M4pbpKXKnIZLJNs+d342OZs4zKZCLSsFCfzlP0VQSZ57NeLleeyAxkP3",
-	"K9NWhRNSupBpDolPZhers71li5YvTb5yxzOjGdu5IauqUJm/Gz9Zo7cT5nsWhLtXsysuU43+Q1tTHvSf",
-	"k8lrRb98+le4F3Mnw9+hE6leykLlgrpIEfwTOucERhJIZFqrbV2WklYbYYRzlErPWMhHU7OQQuOLcOIK",
-	"2VVKE20VH1jqCcwwIPoVcnDeQJj9u1hweMB5K3a1+a8mQs3FShDOlGUkzMO5a9/Lhw8BH66QhSwK0eMX",
-	"6V7k8cTedOnTJvVw6ByV0eenQTDuZFA6YWvfjKd1UayE/SnlFAaSbotst5ZcV7bx2v2k/zdx3/XHaio4",
-	"PFxbJFkiI1lI7tagHFLXKiGCdphBGwH2rYsGNuyPu/sTlmqQR8DX26GDU+RsjrlwXP6wbYfKkaUq7Cl9",
-	"9eXZBQ1PNrXjb9N8CwAA//9RlnZypQwAAA==",
+	"H4sIAAAAAAAC/7RVS0/jPhD/Kpb/f2kvESn7uOQG+0DRSrsItCeEkEmmrWlih5lJUVXlu6/sNG1S3FIW",
+	"eqobP+b3mMdSZrasrAHDJJOlpGwKpfLLsyyztWG3rNBWgKzBb6h2407n7h8vKpCJJEZtJrKJ1tvtxrMD",
+	"TSQRHmuNkMvkpv/Y1tXbqLtq7x8gY/f2uTKzlKF8DupemdkQkTYME0B3zW8aVR6Ap3unfymE5Ic2ymRa",
+	"Fakh1lyztoaugCprCMLw/EIzlH7xP8JYJvK/eGNAvFI/XtNs1pEVoloE0VIQ37Wawy94Wpl4BY81UNhL",
+	"ILpjOwOzz80XIXfZ8oLakawJcIdRW+S6k/0Xe4CiIfg9Ijg5dyrw2tzYmRGDYPvy4DD23clQqD8EuBI8",
+	"NWP7RlsPSsmev8OMjP5NwdcZ6QivK+4S7VgXby6ybREDzA7P1V2F6M7plUU5UIa6cp1CJvLsMiXBU8Wi",
+	"VEZNQIw7fkJvWop4sjiTkWTNjrFvgOIacK4zp+EckNrnTk9GJyOH2VZgVKVlIj/5T5GsFE+9GvH8NHZA",
+	"4777lW2rwgmpXMg0l4lPZhers71lC8TnNl+445k1DO10UFVV6MzfjR/Ims0cecmCcJNqhuIy1uA/tDXl",
+	"QX8cjZ4r+vun4/85tJWauSp0LrALEckvoXNOWUABiLb1mOqyVLhYKSKclVh6qkLd25qFEgaehFNVqK5E",
+	"mmgjdc9Lj3wCAbUvgIPzRIZpv4v2+weY92CozdcaEQwXC4Ew0cSAkIeTlt7Lh+8BHy6AhSoKscYv0q3I",
+	"uzN61Z6Pm839aXNQKp8eB8FuJ4PSCap9Fx7XRbEQpOaQH72cwkDSTZENa8m1Y4qX7if91sTrdr+rpoJT",
+	"w/VDVCUwIMnkZim1Q+p6pIxkO8VkG0FuWxf1bNiec7dHLNUgj4Cv130Hx8DZFHLhuHygtkPlwEoXdExf",
+	"fXl2QcMjTQ/8bZq/AQAA//9ayaJ2hAwAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -42,10 +42,13 @@ func main() {
 	}
 	addr := ":" + port
 
-	// Start the server on 8080
-	// Server will listen on localhost
+	// Start the server on localhost - DB_PORT (default: 10001)
 	log.Printf("Starting the server on %s", addr)
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("Error starting bank-svc")
 	}
 }
+
+// TO-DO: Make sure when (saving/querying/retrieving) bank information, it is
+// 1. all UPPERCASE
+// 2. Trimmed

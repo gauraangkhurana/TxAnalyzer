@@ -17,7 +17,7 @@ paths:
               $ref: '#/components/schemas/SaveNewAccountRequest'
       responses: 
         '200':
-          description: OK; Saved
+          description: OK
         '400':
           description: Invalid request
         '500':
@@ -109,9 +109,7 @@ components:
         bank_name:
           type: string
         accounts:
-          type: array
-          items:
-            $ref: '#/components/schemas/Account'
+          $ref: '#/components/schemas/Account'
         access_token:
           type: string
 
@@ -170,6 +168,6 @@ components:
         - account_type
       properties:
         account_id:
-          type: integer
+          type: string
         account_type:
           type: string

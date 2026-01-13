@@ -19,12 +19,13 @@ This is a web application that lets you analyze your spending
 - Logging
 - Observability Tools 
 - Sessions? Evaluate if needed and how those could be utilized
-
+- Use a AI Model to, 
+    - Identify reversed Txs (no impact on category spend)
+    - Identify same txs - credited/debited  
 
 ### API Docs
 
 Swagger UI is hosted here 
-
 
 ### How to Run
 
