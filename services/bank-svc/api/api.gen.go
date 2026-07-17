@@ -30,6 +30,30 @@ type BankItem struct {
 	BankName string `json:"bank_name"`
 }
 
+// CreateLinkTokenRequest defines model for CreateLinkTokenRequest.
+type CreateLinkTokenRequest struct {
+	UserId int `json:"user_id"`
+}
+
+// CreateLinkTokenResponse defines model for CreateLinkTokenResponse.
+type CreateLinkTokenResponse struct {
+	Expiration string `json:"expiration"`
+	LinkToken  string `json:"link_token"`
+}
+
+// ExchangePublicTokenRequest defines model for ExchangePublicTokenRequest.
+type ExchangePublicTokenRequest struct {
+	BankName    string `json:"bank_name"`
+	PublicToken string `json:"public_token"`
+	UserId      int    `json:"user_id"`
+}
+
+// ExchangePublicTokenResponse defines model for ExchangePublicTokenResponse.
+type ExchangePublicTokenResponse struct {
+	Accounts []Account `json:"accounts"`
+	BankId   int       `json:"bank_id"`
+}
+
 // FinancialInstitutionsResponse defines model for FinancialInstitutionsResponse.
 type FinancialInstitutionsResponse struct {
 	Banks []BankItem `json:"banks"`
@@ -55,9 +79,8 @@ type SaveNewBankResponse struct {
 
 // UserAccountInfo defines model for UserAccountInfo.
 type UserAccountInfo struct {
-	AccessToken string    `json:"access_token"`
-	Accounts    []Account `json:"accounts"`
-	BankName    string    `json:"bank_name"`
+	Accounts []Account `json:"accounts"`
+	BankName string    `json:"bank_name"`
 }
 
 // UserFinancialProfile defines model for UserFinancialProfile.
@@ -72,6 +95,12 @@ type SaveBankAccountJSONRequestBody = SaveNewAccountRequest
 // SaveNewBankJSONRequestBody defines body for SaveNewBank for application/json ContentType.
 type SaveNewBankJSONRequestBody = SaveNewBankRequest
 
+// ExchangePublicTokenJSONRequestBody defines body for ExchangePublicToken for application/json ContentType.
+type ExchangePublicTokenJSONRequestBody = ExchangePublicTokenRequest
+
+// CreateLinkTokenJSONRequestBody defines body for CreateLinkToken for application/json ContentType.
+type CreateLinkTokenJSONRequestBody = CreateLinkTokenRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Save information about a new bank account
@@ -83,6 +112,12 @@ type ServerInterface interface {
 	// Save Financial Institution Information
 	// (POST /v1/bank/institutions)
 	SaveNewBank(c *gin.Context)
+	// Exchange a Plaid Link public_token for an access_token and save the linked accounts
+	// (POST /v1/bank/plaid/exchange)
+	ExchangePublicToken(c *gin.Context)
+	// Create a Plaid Link token so a frontend can launch Plaid Link
+	// (POST /v1/bank/plaid/link-token)
+	CreateLinkToken(c *gin.Context)
 	// Get a user's financial institution information
 	// (GET /v1/bank/users/{userID}/banks)
 	GetUserFinancialProfile(c *gin.Context, userID string)
@@ -134,6 +169,32 @@ func (siw *ServerInterfaceWrapper) SaveNewBank(c *gin.Context) {
 	}
 
 	siw.Handler.SaveNewBank(c)
+}
+
+// ExchangePublicToken operation middleware
+func (siw *ServerInterfaceWrapper) ExchangePublicToken(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ExchangePublicToken(c)
+}
+
+// CreateLinkToken operation middleware
+func (siw *ServerInterfaceWrapper) CreateLinkToken(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateLinkToken(c)
 }
 
 // GetUserFinancialProfile operation middleware
@@ -190,25 +251,31 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/v1/bank/accounts", wrapper.SaveBankAccount)
 	router.GET(options.BaseURL+"/v1/bank/institutions", wrapper.GetFinancialInstitutions)
 	router.POST(options.BaseURL+"/v1/bank/institutions", wrapper.SaveNewBank)
+	router.POST(options.BaseURL+"/v1/bank/plaid/exchange", wrapper.ExchangePublicToken)
+	router.POST(options.BaseURL+"/v1/bank/plaid/link-token", wrapper.CreateLinkToken)
 	router.GET(options.BaseURL+"/v1/bank/users/:userID/banks", wrapper.GetUserFinancialProfile)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RVS0/jPhD/Kpb/f2kvESn7uOQG+0DRSrsItCeEkEmmrWlih5lJUVXlu6/sNG1S3FIW",
-	"eqobP+b3mMdSZrasrAHDJJOlpGwKpfLLsyyztWG3rNBWgKzBb6h2407n7h8vKpCJJEZtJrKJ1tvtxrMD",
-	"TSQRHmuNkMvkpv/Y1tXbqLtq7x8gY/f2uTKzlKF8DupemdkQkTYME0B3zW8aVR6Ap3unfymE5Ic2ymRa",
-	"Fakh1lyztoaugCprCMLw/EIzlH7xP8JYJvK/eGNAvFI/XtNs1pEVoloE0VIQ37Wawy94Wpl4BY81UNhL",
-	"ILpjOwOzz80XIXfZ8oLakawJcIdRW+S6k/0Xe4CiIfg9Ijg5dyrw2tzYmRGDYPvy4DD23clQqD8EuBI8",
-	"NWP7RlsPSsmev8OMjP5NwdcZ6QivK+4S7VgXby6ybREDzA7P1V2F6M7plUU5UIa6cp1CJvLsMiXBU8Wi",
-	"VEZNQIw7fkJvWop4sjiTkWTNjrFvgOIacK4zp+EckNrnTk9GJyOH2VZgVKVlIj/5T5GsFE+9GvH8NHZA",
-	"4777lW2rwgmpXMg0l4lPZhers71lC8TnNl+445k1DO10UFVV6MzfjR/Ims0cecmCcJNqhuIy1uA/tDXl",
-	"QX8cjZ4r+vun4/85tJWauSp0LrALEckvoXNOWUABiLb1mOqyVLhYKSKclVh6qkLd25qFEgaehFNVqK5E",
-	"mmgjdc9Lj3wCAbUvgIPzRIZpv4v2+weY92CozdcaEQwXC4Ew0cSAkIeTlt7Lh+8BHy6AhSoKscYv0q3I",
-	"uzN61Z6Pm839aXNQKp8eB8FuJ4PSCap9Fx7XRbEQpOaQH72cwkDSTZENa8m1Y4qX7if91sTrdr+rpoJT",
-	"w/VDVCUwIMnkZim1Q+p6pIxkO8VkG0FuWxf1bNiec7dHLNUgj4Cv130Hx8DZFHLhuHygtkPlwEoXdExf",
-	"fXl2QcMjTQ/8bZq/AQAA//9ayaJ2hAwAAA==",
+	"H4sIAAAAAAAC/7xX32/bNhD+Vw7cgL1oVbIfL35ru64QNmzBsj0VRXGhzjZriVRJyqkR+H8fSEqyZFOK",
+	"2kZ5imJRvO++7zve8YFxVVZKkrSGrR6Y4Vsq0T++5FzV0rrHSquKtBXkX2B48UHk7j97qIitmLFayA07",
+	"Jt3r8OJiwTFhmj7VQlPOVu/6m519+j5pP1V3H4lbt/crlLvMUnkJ6g7lbohISEsb0u4z/1JiOQNPu0//",
+	"oxiS15rQ0p9C7v5VO5L/0KeaTISs2pAewXUWuV05K5qplDR0GY4+V0KjFUpGtSmE3H2wbovHmeitTfr7",
+	"xvC9+cy3KDd0U98Vgk8zMiVGwiq/wyjG5CsI7Ut5FmB2LmN8N471z8JS6R++17RmK/ZdeqqttCmstK2q",
+	"YxcZtcZD59JZmZ1M2sWPZfK7kCi5wCKTxgpbO/nMeC5u1/mJdKV4kUkEbBzfLe7pL7pvKBk1DHJOxkxY",
+	"oi/CTO6nTfitHusAJUPwEyQ4Or+qZGLWGD21BsGmfPBlPoyF+s+QbgjP5Fo9Q+l8KUGPVI9LoKugG63W",
+	"ovjmojknJZLKfO+NFZZbJxrKczJciyo0BPbyJjNgt2ihRIkbgnWbH4jTEQH3Su9YwqywLmPfdOGW9F5w",
+	"R9qetAnbXb+4enHlMKuKJFaCrdjP/qeEVWi3no10f506oGlf7koFlzsifVPJcrby5nSxWp1DtmTsK5Uf",
+	"3HKupKUwkWBVFYL7b9OPJnS7QPJjEsQPneOQXKtr8j+EGvGgf7q6umT07z9c/r/EXmVyj4XIQbchEvZr",
+	"bJ1jljSQ1ipobOqyRH1oGAEnpS59qoB3qraAIOkeHKuAbU0ckxPVPS098g1F2H5LNtofWDztJ+F+uiF5",
+	"DYbcvK61JmmLA2jaCGNJUx43rXkqHd5EdHhLFrAooMMP2VnkcUc3x+2ybu53j1lWvl4GwbiSUerA1L49",
+	"ruuiOIDBPeWLl1McSHYqsmEtVQWKPKVmJhw/vCJT40KST8zazyz91KQcsUBz5BpwNwvKB+IvKXsLExBu",
+	"nJrg7lHQvwfAWmlACf1hDVDm3pJgt9RC7ppYxCNuyY/dkBp3ydk9biGHjNxNn9kdY3fWiDO8IIF17r9a",
+	"9BgIwIZuCMGNAoS19tnnwFFCgbXk297KofJuWDPpg/uT/XZMu2FwrONGZ0o3LWksyZI2bPXugQmXgJug",
+	"WMLCUMtCBHauX9LT4nzsfb9gI4/mERH2tn++r8nyLeXgcvnBhPklJ4uiMEvK7Zt3GzQ+8IrB6X88/h8A",
+	"AP//Od768xYTAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"database/sql"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"spendanalyzer.com/bank/api"
@@ -10,17 +11,29 @@ import (
 )
 
 type BankHandler struct {
-	DB *sql.DB
+	Service *backend.BankService
 }
 
-func NewBankHandler(db *sql.DB) *BankHandler {
-	return &BankHandler{DB: db}
+func NewBankHandler(service *backend.BankService) *BankHandler {
+	return &BankHandler{Service: service}
+}
+
+// writeError maps a backend error to an HTTP status code. Plaid validation
+// errors (bad/expired token, unknown account) are the client's fault (400);
+// everything else is treated as a server error.
+func writeError(c *gin.Context, err error) {
+	var plaidErr *backend.PlaidValidationError
+	if errors.As(err, &plaidErr) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": plaidErr.Error()})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 }
 
 func (h *BankHandler) GetFinancialInstitutions(c *gin.Context) {
-	resp, err := backend.GetInstitutions(h.DB)
+	resp, err := h.Service.GetInstitutions()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, resp)
@@ -29,13 +42,17 @@ func (h *BankHandler) GetFinancialInstitutions(c *gin.Context) {
 // GetUserFinancialProfile implements api.ServerInterface.
 func (h *BankHandler) GetUserFinancialProfile(c *gin.Context, userID string) {
 	if len(userID) < 1 {
-		c.JSON(http.StatusBadRequest, g.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
-	var userFinancialProfile api.UserFinancialProfile
-	userFinancialProfile, err := backend.GetUserFinancialProfile(h.DB, userID)
+	userIDInt, err := strconv.Atoi(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid userID"})
+		return
+	}
+	userFinancialProfile, err := h.Service.GetUserFinancialProfile(userIDInt)
+	if err != nil {
+		writeError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, userFinancialProfile)
@@ -50,9 +67,9 @@ func (h *BankHandler) SaveBankAccount(c *gin.Context) {
 		return
 	}
 
-	err := backend.SaveBankAcount(h.DB, req)
+	err := h.Service.SaveBankAccount(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, "201 OK")
@@ -67,9 +84,41 @@ func (h *BankHandler) SaveNewBank(c *gin.Context) {
 		return
 	}
 
-	resp, err := backend.AddInstitution(h.DB, req.BankName)
+	resp, err := h.Service.AddInstitution(req.BankName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, resp)
+}
+
+// CreateLinkToken implements api.ServerInterface.
+func (h *BankHandler) CreateLinkToken(c *gin.Context) {
+	var req api.CreateLinkTokenRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	resp, err := h.Service.CreateLinkToken(c.Request.Context(), req.UserId)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, resp)
+}
+
+// ExchangePublicToken implements api.ServerInterface.
+func (h *BankHandler) ExchangePublicToken(c *gin.Context) {
+	var req api.ExchangePublicTokenRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	resp, err := h.Service.ExchangePublicToken(c.Request.Context(), req)
+	if err != nil {
+		writeError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, resp)
