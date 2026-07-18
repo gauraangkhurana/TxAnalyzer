@@ -1,0 +1,118 @@
+openapi: 3.0.0
+info:
+  title: Transaction Service
+  description: APIs to pull transactions from Plaid and view them
+  version: 1.0.0
+
+paths:
+  /v1/transactions/pull:
+    post:
+      summary: Pull transactions for one account over a date range and persist them
+      operationId: pullTransactions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PullTransactionsRequest'
+      responses:
+        '201':
+          description: Transactions pulled and stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullTransactionsResponse'
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
+  /v1/transactions:
+    get:
+      summary: Get all stored transactions for a user, across all their linked accounts
+      operationId: getTransactions
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Combined transaction list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTransactionsResponse'
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
+
+components:
+  schemas:
+    PullTransactionsRequest:
+      type: object
+      required:
+        - user_id
+        - bank_name
+        - account_id
+        - date_from
+        - date_to
+      properties:
+        user_id:
+          type: integer
+        bank_name:
+          type: string
+        account_id:
+          type: string
+        date_from:
+          type: string
+        date_to:
+          type: string
+    PullTransactionsResponse:
+      type: object
+      required:
+        - pulled
+      properties:
+        pulled:
+          type: integer
+
+    Transaction:
+      type: object
+      required:
+        - transaction_id
+        - bank_name
+        - account_id
+        - date
+        - name
+        - amount
+        - pending
+      properties:
+        transaction_id:
+          type: string
+        bank_name:
+          type: string
+        account_id:
+          type: string
+        date:
+          type: string
+        name:
+          type: string
+        merchant_name:
+          type: string
+        amount:
+          type: number
+          format: double
+        category:
+          type: string
+        pending:
+          type: boolean
+    GetTransactionsResponse:
+      type: object
+      required:
+        - transactions
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'

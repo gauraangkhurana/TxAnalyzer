@@ -1,92 +1,48 @@
 ### Summary
 
-Transaction service is being designed to pull all the bank data and then categorize the spend accordingly. 
-This service will be accessible solely via HTTP REST protocol. 
+tx-svc pulls transactions from Plaid for a linked bank account over a date range, and stores them so viewing them again doesn't re-hit Plaid. It shares the sqlite database with bank-svc (reads `accounts`/`banks` to find the right encrypted access token) and decrypts tokens with the same `PLAID_TOKEN_ENCRYPTION_KEY` bank-svc uses to encrypt them.
 
-Downstream it relies on the bank service and user service and talks to both of them. 
-It is called by the UI which will generate HTTP requests based on user flow.
+There are two operations:
 
-Behavior: 
+1. **Pull**: given a user, bank name, account ID, and date range, call Plaid's `/transactions/get`, paginate through all results, and upsert them into the `transactions` table (deduped on Plaid's `transaction_id`, so re-pulling an overlapping range just refreshes rows instead of duplicating them).
+2. **View**: return everything stored for a user across *all* their linked accounts and banks, combined into one list, sorted most recent first - no Plaid call, just sqlite.
 
-By default provides the Txs for a year (if no year is picked by the user)
+### API Design
 
-Future scope,
+`POST /v1/transactions/pull`
 
-- extend APIs GET Txs and GET Category to accept account/bank in request
-- build functionality to identify copies of the same txs
-
-
-API Design, 
-
-- Get all transactions for a user within a time frame
-
-    `HTTP GET /trasactions/user/:uid`
-
-    request_params : {                  
-        "date_from": datetime,          // optional for the user - defaults to today
-        "date_to": datetime,            // optional - defaults to T - 1Yr
-        "duration": "string"
+    request_body: {
+        "user_id": 124,
+        "bank_name": "First Platypus Bank",
+        "account_id": "...",
+        "date_from": "2026-01-01",
+        "date_to": "2026-07-17"
     }
 
     response: {
-        "bank_name": string,
-        "account_name": string,
-        "account_number": string,
-        "transactions" : [
-            {
-                "tx_id":   integer,
-                "tx_name": string,
-                "tx_date": datetime,
-                "type": string/ enum{"credit", "debit"},
-                "category" : string,                                // optional
-            },
-            {
-                "tx_id":   integer,
-                "tx_name": string,
-                "tx_date": datetime,
-                "type": string/ enum{"credit", "debit"},
-                "category" : string,                                // optional
-            },
-        ]
+        "pulled": 42
     }
-    
-- Get spend by category for a given user
 
-    `HTTP GET /trasactions/category/user/:uid`
-
-    request_params : {                  
-        "date_from": datetime,          // optional for user - otherwise this defaults to today
-        "date_to": datetime,            // optional for user - defaults to T - 1Yr
-        "duration": "string"            // optional
-    }
+`GET /v1/transactions?user_id=124`
 
     response: {
-        "categories": [
+        "transactions": [
             {
-                "category": string,
-                "amount": float64,
-                "count": integer,
-                "percentage": float64
-            },
-            {
-                ...
+                "transaction_id": "...",
+                "bank_name": "First Platypus Bank",
+                "account_id": "...",
+                "date": "2026-07-15",
+                "name": "Uber",
+                "merchant_name": "Uber",
+                "amount": 24.50,
+                "category": "TRANSPORTATION",
+                "pending": false
             }
         ]
-        "total_spending": float64,
-        "date_from": datetime,
-        "date_to": datetime,
     }
 
+### Notes
 
-- Update the category of transaction(s)
-
-    `HTTP PATCH /trasactions`
-
-    request: {
-        "transaction_ids": []string,
-        "updates" : {
-            "category" : string,
-        }
-    }
-
-    response: 200 OK
+- `category` is Plaid's `personal_finance_category.primary` field.
+- Not implemented (yet): full `/transactions/sync` cursor-based reconciliation (proper pending→posted transitions), a spend-by-category endpoint, duplicate/reversed-transaction detection, and an endpoint to manually edit a transaction's category - all reasonable next steps once the basic pull/view loop is in daily use.
+- Required env vars: `DB_PATH`, `PORT` (defaults to `10003`), `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`, `PLAID_TOKEN_ENCRYPTION_KEY` (must match bank-svc's key - see `.env.example` at the repo root).
