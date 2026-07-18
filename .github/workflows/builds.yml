@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [bank-svc, user-svc]
+        service: [bank-svc, user-svc, tx-svc]
     defaults:
       run:
         working-directory: services/${{ matrix.service }}
