@@ -104,8 +104,24 @@
             display: none;
         }
         #welcome {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
             font-size: 0.9rem;
             color: #94a3b8;
+        }
+        .logout-btn {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #94a3b8;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .logout-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.06);
+            color: #e2e8f0;
         }
         select {
             width: 100%;
@@ -273,7 +289,10 @@
         <p class="subtitle">Link your bank accounts to start tracking spend.</p>
 
         <div id="identity-card" class="card">
-            <div id="welcome" class="hidden"></div>
+            <div id="welcome" class="hidden">
+                <span id="welcome-text"></span>
+                <button id="logout-btn" class="logout-btn">Log out</button>
+            </div>
             <div id="identity-form">
                 <input id="username-input" type="text" placeholder="Enter your name" />
                 <button id="create-user-btn">Continue</button>
