@@ -18,6 +18,20 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// CategorySpend defines model for CategorySpend.
+type CategorySpend struct {
+	Amount     float64 `json:"amount"`
+	Category   string  `json:"category"`
+	Count      int     `json:"count"`
+	Percentage float64 `json:"percentage"`
+}
+
+// GetSpendByCategoryResponse defines model for GetSpendByCategoryResponse.
+type GetSpendByCategoryResponse struct {
+	Categories    []CategorySpend `json:"categories"`
+	TotalSpending float64         `json:"total_spending"`
+}
+
 // GetTransactionsResponse defines model for GetTransactionsResponse.
 type GetTransactionsResponse struct {
 	Transactions []Transaction `json:"transactions"`
@@ -55,6 +69,11 @@ type GetTransactionsParams struct {
 	UserId int `form:"user_id" json:"user_id"`
 }
 
+// GetSpendByCategoryParams defines parameters for GetSpendByCategory.
+type GetSpendByCategoryParams struct {
+	UserId int `form:"user_id" json:"user_id"`
+}
+
 // PullTransactionsJSONRequestBody defines body for PullTransactions for application/json ContentType.
 type PullTransactionsJSONRequestBody = PullTransactionsRequest
 
@@ -63,6 +82,9 @@ type ServerInterface interface {
 	// Get all stored transactions for a user, across all their linked accounts
 	// (GET /v1/transactions)
 	GetTransactions(c *gin.Context, params GetTransactionsParams)
+	// Get spend grouped by category for a user, across all their linked accounts
+	// (GET /v1/transactions/categories)
+	GetSpendByCategory(c *gin.Context, params GetSpendByCategoryParams)
 	// Pull transactions for one account over a date range and persist them
 	// (POST /v1/transactions/pull)
 	PullTransactions(c *gin.Context)
@@ -110,6 +132,39 @@ func (siw *ServerInterfaceWrapper) GetTransactions(c *gin.Context) {
 	siw.Handler.GetTransactions(c, params)
 }
 
+// GetSpendByCategory operation middleware
+func (siw *ServerInterfaceWrapper) GetSpendByCategory(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetSpendByCategoryParams
+
+	// ------------- Required query parameter "user_id" -------------
+
+	if paramValue := c.Query("user_id"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument user_id is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", c.Request.URL.Query(), &params.UserId)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter user_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetSpendByCategory(c, params)
+}
+
 // PullTransactions operation middleware
 func (siw *ServerInterfaceWrapper) PullTransactions(c *gin.Context) {
 
@@ -151,24 +206,26 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	}
 
 	router.GET(options.BaseURL+"/v1/transactions", wrapper.GetTransactions)
+	router.GET(options.BaseURL+"/v1/transactions/categories", wrapper.GetSpendByCategory)
 	router.POST(options.BaseURL+"/v1/transactions/pull", wrapper.PullTransactions)
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RVT2/bPgz9KoJ+v6NRp/tz8W3bYegt2HYrioKxmUStLKkUnSEo/N0Hym5tJ/aWAeup",
-	"qkmRT3yPL8+69HXwDh1HXTzrWO6xhnT8ivyDwEUo2XgXv2EM3kWUUCAfkNhgSuRRlvxvGOt0+J9wqwv9",
-	"Xz70yPsG+ai0bjPNx4C60EAER922mSZ8agxhpYvbaYO712S/ecCS5fa6sXaK9anByOdQoSx94/jeVAl4",
-	"VycyGbeTOhtwj/cOapyNVsB4vyVfL0fZz8aaiDTtaRzjDunsqS+ZYyzZGPYYxtD0sqEsERgaa/ESdH3i",
-	"XLcxn387dqglKqGtpxpYF7ryzcbK0/tk19QbAfQnjkpg3Hk6LlI0G6iRyj04Xq67GAjoKjkOsY33FqFT",
-	"9TCU+bcvC/0CEege1usABzTnDEkr47ZJnxXGkkzouNKf1jdRsVdCrhqvmhKRqbUFUylwlToY/Kl4jyI8",
-	"Nmyl/Ih29R3pYErBc0CKXfHrq9XVSkbhAzoIRhf6ffqU6QC8T+rID9f5qYfsMOlBRATy8abSxakjpRoE",
-	"NTJS1MXtszbS8qlBOr7Mphht1DBppgaz3utmZX8n2d26JDjvViv5U3rH2CkVQrCmTNjyh9iJfij4O+db",
-	"8tVE0ZSaL77eGIfVmBZlTUwb96HDNL1x4w5gTaWod8A20x/n8oQrJIVEvlvz2NQ1yN7IlBVYqyJ7mraO",
-	"autJgZKRZgpK8jGmVN6jIWWNe8RK9TqNqewpt7moLBmEjzMMn3pWzxpG/uyr4z+jYOn3op0upMikPVPC",
-	"9RvCWJbCOE91PpyWsmPpLfWwPvcFT8o7fGFaebkKSjxJEbgdJmRBTCBy5xht27a/AgAA///7gI5jbAgA",
-	"AA==",
+	"H4sIAAAAAAAC/9RWT2/6SAz9KqPZPUaF7p9LbtseVr2h7d6qCpnEwLST8dTjsEJVvvtqJgESSCr6U3v4",
+	"3ULs2M9+zzbvuqDKk0MnQefvOhRbrCA93oPghnj/6NGV8YVn8shiMJmhotpJfFoTVyA61yXVK4s607L3",
+	"qHPt6mqFrJtMF12s6N4Zg7Bxm2Q8BOosxglu2u88coFOYINXJWoyzfhWG8ZS50+nrNkB7SHZIPLzMQ6t",
+	"XrCQmPhvlFT33f7Qhn8weHIBLzvRpel+GcEqPfzKuNa5/mV26vCsa+9s2NvmCACYYZ9+k4BdhmiOXfrx",
+	"4iOqi3ATFf/L4AIUYsiF6XKl53V1wb3Ql+WeIR8kGIO6qK0dYn2rMciIRotE99KUo8JbgXtdOqhw1FqC",
+	"4HLNVE1bhUZtdUAe5jxK+qzUg2cfS9aH3YdxSnpdU6YI9LW1eA26znEsW5/Pz7b9U5vjY44+3CuxW6OG",
+	"CrnYgpPpuJOG3kB2thWRRWhVfWrKeO3TQr9CBLqD1Vtm0/McUxm3TvosMRRsfMuV/mvxEJSQiuSq/qip",
+	"KDK1sGBKBa5UO4P/KdliFJ4YsTF8j3b1iLwzRcSzQw5t8Nub+c08toI8OvBG5/r39CrTHmSb1DHb3c7O",
+	"d8gGkx6iiCC+fCh1fr6RUgyGCgU56PzpXZuY8q3GtOFbynoTdeq0cI1Zd9pGZf8cvdtxSXB+m8/TYicn",
+	"2CoVvLemSNhmL6EV/SngR5tvaq8miobU3FO1Mg7LPi3KmpAm7o8W0/CLB7cDa0rF3QZsMv3nmF/kClkh",
+	"M7VjHuqqgjg3scsKrFVBiIepg1oTK1CxpZmCgimE5CpbNKysca9Yqk6nIYU953Y2vI1TNJ+d2p+X6an/",
+	"DCNkJ1e12qvjDvtmktP1Vxum2uMg8RfQHJdJugMURhg+P00dZRjkjsr9l/V/6m9BM9y7USPNhQxuvxHG",
+	"tAj6fqo9t2n3tsP4nYpYXK5/YkUOD0wrip+CiqdHMbgNJmQ+7vog7WFomqb5PwAA///LJm5VQgwAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

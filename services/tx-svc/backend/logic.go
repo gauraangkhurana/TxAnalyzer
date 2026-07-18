@@ -32,6 +32,16 @@ JOIN banks b ON a.bank_id = b.id
 WHERE a.user_id = ?
 ORDER BY t.tx_date DESC`
 
+// Spend only: amount > 0 is Plaid's convention for money out (debits), so
+// incoming money (refunds, deposits, negative amounts) doesn't dilute the
+// category breakdown.
+var GetSpendByCategoryQuery = `SELECT COALESCE(NULLIF(t.category, ''), 'unknown') AS category, SUM(t.amount) AS total, COUNT(*) AS count
+FROM transactions t
+JOIN accounts a ON t.account_id = a.account_id
+WHERE a.user_id = ? AND t.amount > 0
+GROUP BY category
+ORDER BY total DESC`
+
 // TxService bundles the dependencies needed to pull and serve transactions:
 // the database, a Plaid API client, and the key used to decrypt access
 // tokens bank-svc encrypted at rest.
@@ -120,4 +130,41 @@ func (s *TxService) GetTransactions(userID int) ([]api.Transaction, error) {
 	}
 
 	return transactions, nil
+}
+
+// GetSpendByCategory returns total spend grouped by category for a user,
+// across all their linked accounts and banks, sorted highest spend first.
+// Only positive-amount (outflow) transactions count as spend.
+func (s *TxService) GetSpendByCategory(userID int) (api.GetSpendByCategoryResponse, error) {
+	var resp api.GetSpendByCategoryResponse
+
+	rows, err := s.DB.Query(GetSpendByCategoryQuery, userID)
+	if err != nil {
+		return resp, err
+	}
+	defer rows.Close()
+
+	categories := make([]api.CategorySpend, 0)
+	var totalSpending float64
+	for rows.Next() {
+		var c api.CategorySpend
+		if err := rows.Scan(&c.Category, &c.Amount, &c.Count); err != nil {
+			return resp, err
+		}
+		categories = append(categories, c)
+		totalSpending += c.Amount
+	}
+	if err := rows.Err(); err != nil {
+		return resp, err
+	}
+
+	for i := range categories {
+		if totalSpending > 0 {
+			categories[i].Percentage = categories[i].Amount / totalSpending * 100
+		}
+	}
+
+	resp.Categories = categories
+	resp.TotalSpending = totalSpending
+	return resp, nil
 }
