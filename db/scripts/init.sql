@@ -22,3 +22,18 @@ CREATE TABLE IF NOT EXISTS accounts(
 	FOREIGN KEY(bank_id) REFERENCES banks (id) ON DELETE CASCADE,
 	FOREIGN KEY(user_id) REFERENCES users (id)
 );
+
+CREATE TABLE IF NOT EXISTS transactions(
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	account_id TEXT NOT NULL,
+	plaid_transaction_id TEXT NOT NULL UNIQUE,
+	amount REAL NOT NULL,
+	tx_date TEXT NOT NULL,
+	name TEXT,
+	merchant_name TEXT,
+	category TEXT,
+	pending INTEGER NOT NULL DEFAULT 0,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+	FOREIGN KEY(account_id) REFERENCES accounts (account_id) ON DELETE CASCADE
+);

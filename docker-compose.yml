@@ -36,6 +36,7 @@ services:
     depends_on:
       - bank-svc
       - user-svc
+      - tx-svc
 
   # Bank-svc for all bank related APIs
   bank-svc:
@@ -66,6 +67,24 @@ services:
     environment:
       - DB_PATH=/app/data/database.db
       - PORT=10002
+    depends_on:
+      - database
+    entrypoint: >
+      sh -c "./main"
+
+  # Tx-svc pulls and serves transaction data
+  tx-svc:
+    build: ./services/tx-svc
+    container_name: tx-svc
+    ports:
+      - "10003:10003"
+    volumes:
+    - ./db/data/database.db:/app/data/database.db
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/app/data/database.db
+      - PORT=10003
     depends_on:
       - database
     entrypoint: >
