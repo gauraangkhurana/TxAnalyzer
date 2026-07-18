@@ -15,8 +15,57 @@ const pullBtn = document.getElementById('pull-btn');
 const pullStatusEl = document.getElementById('pull-status');
 const transactionsCard = document.getElementById('transactions-card');
 const transactionsBody = document.getElementById('transactions-body');
+const categorizeCard = document.getElementById('categorize-card');
+const categorizeBtn = document.getElementById('categorize-btn');
+const categorizeStatusEl = document.getElementById('categorize-status');
+const categorizeResults = document.getElementById('categorize-results');
+const pieChartEl = document.getElementById('pie-chart');
+const categoryLegendEl = document.getElementById('category-legend');
+const categoryBarsEl = document.getElementById('category-bars');
 
 let accountOptions = [];
+
+// Fixed hue order - never reassigned per category, matches the CSS
+// custom properties declared in index.html.
+const SERIES_COLORS = [
+  'var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)',
+  'var(--series-5)', 'var(--series-6)', 'var(--series-7)', 'var(--series-8)',
+];
+
+function setCategorizeStatus(message, isError) {
+  categorizeStatusEl.textContent = message || '';
+  categorizeStatusEl.classList.toggle('error', Boolean(isError));
+}
+
+function formatCategoryName(category) {
+  if (category === 'unknown') return 'Unknown';
+  if (category === 'Other') return 'Other';
+  return category
+    .toLowerCase()
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+// Categories arrive pre-sorted, highest spend first. Past the palette's 8
+// validated slots, fold the tail into "Other" rather than generating a 9th
+// color (a generated hue can't be told apart from an existing one).
+function foldToPaletteSize(categories) {
+  if (categories.length <= SERIES_COLORS.length) return categories;
+
+  const kept = categories.slice(0, SERIES_COLORS.length - 1);
+  const rest = categories.slice(SERIES_COLORS.length - 1);
+  const other = rest.reduce(
+    (acc, c) => ({
+      category: 'Other',
+      amount: acc.amount + c.amount,
+      count: acc.count + c.count,
+      percentage: acc.percentage + c.percentage,
+    }),
+    { category: 'Other', amount: 0, count: 0, percentage: 0 },
+  );
+  return [...kept, other];
+}
 
 function setPullStatus(message, isError) {
   pullStatusEl.textContent = message || '';
@@ -74,6 +123,7 @@ async function loadAccounts() {
   if (banks.length === 0) {
     accountsCard.classList.add('hidden');
     pullCard.classList.add('hidden');
+    categorizeCard.classList.add('hidden');
     return;
   }
 
@@ -104,6 +154,7 @@ async function loadAccounts() {
 
   accountsCard.classList.remove('hidden');
   pullCard.classList.remove('hidden');
+  categorizeCard.classList.remove('hidden');
 
   if (!dateFromInput.value || !dateToInput.value) {
     const { from, to } = defaultDateRange();
@@ -172,6 +223,72 @@ async function pullTransactions() {
     setPullStatus(err.message, true);
   } finally {
     pullBtn.disabled = false;
+  }
+}
+
+function renderCategorySpend(rawCategories) {
+  const categories = foldToPaletteSize(rawCategories);
+
+  let cumulative = 0;
+  const stops = categories.map((c, i) => {
+    const start = cumulative;
+    cumulative += c.percentage;
+    return `${SERIES_COLORS[i]} ${start}% ${cumulative}%`;
+  });
+  pieChartEl.style.background = `conic-gradient(${stops.join(', ')})`;
+
+  categoryLegendEl.innerHTML = '';
+  categoryBarsEl.innerHTML = '';
+
+  categories.forEach((c, i) => {
+    const color = SERIES_COLORS[i];
+    const label = formatCategoryName(c.category);
+
+    const legendRow = document.createElement('div');
+    legendRow.className = 'legend-row';
+    legendRow.innerHTML = `
+      <span class="legend-swatch" style="background:${color}"></span>
+      <span class="legend-label">${label}</span>
+      <span class="legend-amount">$${c.amount.toFixed(2)} (${c.percentage.toFixed(1)}%)</span>
+    `;
+    categoryLegendEl.appendChild(legendRow);
+
+    const barRow = document.createElement('div');
+    barRow.innerHTML = `
+      <div class="bar-row-label">
+        <span>${label}</span>
+        <span>$${c.amount.toFixed(2)} (${c.percentage.toFixed(1)}%)</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${c.percentage}%; background:${color}"></div>
+      </div>
+    `;
+    categoryBarsEl.appendChild(barRow);
+  });
+
+  categorizeResults.classList.remove('hidden');
+}
+
+async function categorizeSpend() {
+  const userId = getUserId();
+  if (!userId) return;
+
+  categorizeBtn.disabled = true;
+  setCategorizeStatus('Categorizing...');
+
+  try {
+    const result = await apiRequest(`/v1/transactions/categories?user_id=${userId}`);
+    if (!result.categories || result.categories.length === 0) {
+      setCategorizeStatus('No spend to categorize yet - pull some transactions first.', true);
+      categorizeResults.classList.add('hidden');
+      return;
+    }
+    renderCategorySpend(result.categories);
+    setCategorizeStatus('');
+  } catch (err) {
+    setCategorizeStatus(err.message, true);
+  } finally {
+    categorizeBtn.disabled = false;
   }
 }
 
@@ -253,6 +370,7 @@ async function linkBank() {
 createUserBtn.addEventListener('click', createUser);
 linkBankBtn.addEventListener('click', linkBank);
 pullBtn.addEventListener('click', pullTransactions);
+categorizeBtn.addEventListener('click', categorizeSpend);
 
 (function init() {
   const userId = getUserId();

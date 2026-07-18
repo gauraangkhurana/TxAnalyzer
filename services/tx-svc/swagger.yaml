@@ -47,6 +47,27 @@ paths:
           description: Invalid request
         '500':
           description: Server error
+  /v1/transactions/categories:
+    get:
+      summary: Get spend grouped by category for a user, across all their linked accounts
+      operationId: getSpendByCategory
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Spend by category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSpendByCategoryResponse'
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
 
 components:
   schemas:
@@ -116,3 +137,35 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Transaction'
+
+    CategorySpend:
+      type: object
+      required:
+        - category
+        - amount
+        - count
+        - percentage
+      properties:
+        category:
+          type: string
+        amount:
+          type: number
+          format: double
+        count:
+          type: integer
+        percentage:
+          type: number
+          format: double
+    GetSpendByCategoryResponse:
+      type: object
+      required:
+        - categories
+        - total_spending
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorySpend'
+        total_spending:
+          type: number
+          format: double

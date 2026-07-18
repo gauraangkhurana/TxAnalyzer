@@ -58,3 +58,13 @@ func (h *TxHandler) GetTransactions(c *gin.Context, params api.GetTransactionsPa
 	}
 	c.JSON(http.StatusOK, api.GetTransactionsResponse{Transactions: transactions})
 }
+
+// GetSpendByCategory implements api.ServerInterface.
+func (h *TxHandler) GetSpendByCategory(c *gin.Context, params api.GetSpendByCategoryParams) {
+	resp, err := h.Service.GetSpendByCategory(params.UserId)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
