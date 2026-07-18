@@ -17,7 +17,7 @@ paths:
               $ref: '#/components/schemas/SaveNewAccountRequest'
       responses: 
         '200':
-          description: OK; Saved
+          description: OK
         '400':
           description: Invalid request
         '500':
@@ -33,7 +33,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SaveNewBankRequest'
       responses:
-        '200':
+        '201':
           description: Financial Institution successfully saved
           content:
             application/json:
@@ -52,7 +52,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetFinancialInstitutionsResponse'
+                $ref: '#/components/schemas/FinancialInstitutionsResponse'
         '400':
           description: Invalid request
         '500':
@@ -74,6 +74,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserFinancialProfile'
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
+  /v1/bank/plaid/link-token:
+    post:
+      summary: Create a Plaid Link token so a frontend can launch Plaid Link
+      operationId: createLinkToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLinkTokenRequest'
+      responses:
+        '201':
+          description: Link token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateLinkTokenResponse'
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
+  /v1/bank/plaid/exchange:
+    post:
+      summary: Exchange a Plaid Link public_token for an access_token and save the linked accounts
+      operationId: exchangePublicToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExchangePublicTokenRequest'
+      responses:
+        '201':
+          description: Accounts linked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangePublicTokenResponse'
         '400':
           description: Invalid request
         '500':
@@ -109,10 +151,28 @@ components:
         bank_name:
           type: string
         accounts:
+          $ref: '#/components/schemas/Account'
+        access_token:
+          type: string
+
+    FinancialInstitutionsResponse:
+      type: object
+      required:
+        - banks
+      properties:
+        banks:
           type: array
           items:
-            $ref: '#/components/schemas/Account'
-        access_token:
+            $ref: '#/components/schemas/BankItem'
+    BankItem:
+      type: object
+      required:
+        - bank_id
+        - bank_name
+      properties:
+        bank_id:
+          type: integer
+        bank_name:
           type: string
 
     UserFinancialProfile:
@@ -125,18 +185,15 @@ components:
         banks:
           type: array
           items:
-            $ref: '#/components/schemas/BankInformation'
+            $ref: '#/components/schemas/UserAccountInfo'
     
-    BankInformation:
+    UserAccountInfo:
       type: object
       required:
         - bank_name
         - accounts
-        - access_token
       properties:
         bank_name:
-          type: string
-        access_token:
           type: string
         accounts:
           type: array
@@ -150,6 +207,50 @@ components:
         - account_type
       properties:
         account_id:
-          type: integer
+          type: string
         account_type:
           type: string
+
+    CreateLinkTokenRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: integer
+    CreateLinkTokenResponse:
+      type: object
+      required:
+        - link_token
+        - expiration
+      properties:
+        link_token:
+          type: string
+        expiration:
+          type: string
+
+    ExchangePublicTokenRequest:
+      type: object
+      required:
+        - user_id
+        - bank_name
+        - public_token
+      properties:
+        user_id:
+          type: integer
+        bank_name:
+          type: string
+        public_token:
+          type: string
+    ExchangePublicTokenResponse:
+      type: object
+      required:
+        - bank_id
+        - accounts
+      properties:
+        bank_id:
+          type: integer
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'

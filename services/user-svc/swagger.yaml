@@ -1,0 +1,85 @@
+openapi: 3.0.0
+info:
+  title: User Service
+  description: APIs that manage user identity records
+  version: 1.0.0
+
+paths:
+  /v1/users:
+    post:
+      summary: Create a new user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          description: Invalid request
+        '500':
+          description: Server error
+  /v1/users/{userID}:
+    get:
+      summary: Get a user by ID
+      operationId: getUser
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: User not found
+        '500':
+          description: Server error
+
+components:
+  schemas:
+    CreateUserRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+    CreateUserResponse:
+      type: object
+      required:
+        - user_id
+        - username
+      properties:
+        user_id:
+          type: integer
+        username:
+          type: string
+
+    GetUserResponse:
+      type: object
+      required:
+        - user_id
+        - username
+        - created_at
+      properties:
+        user_id:
+          type: integer
+        username:
+          type: string
+        created_at:
+          type: string

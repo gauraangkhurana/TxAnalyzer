@@ -3,83 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
+    <title>Transaction Analyzer</title>
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Playfair+Display:italic&display=swap');
-
         body {
             margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            padding: 2rem;
             min-height: 100vh;
-            background: #0f172a; /* Deep dark blue background */
-            font-family: 'Inter', sans-serif;
-            overflow: hidden;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
-
-        /* Animated Background Glow */
-        body::before {
-            content: "";
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            background: rgba(56, 189, 248, 0.2);
-            filter: blur(100px);
-            border-radius: 50%;
-            z-index: -1;
-            animation: move 10s infinite alternate;
-        }
-
-        @keyframes move {
-            from { transform: translate(-50%, -50%); }
-            to { transform: translate(50%, 50%); }
-        }
-
         .container {
-            text-align: center;
-            padding: 4rem;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 640px;
+            margin: 0 auto;
         }
-
         h1 {
-            font-size: 5rem;
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: -2px;
-            background: linear-gradient(to right, #38bdf8, #818cf8, #c084fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.3));
+            font-size: 1.75rem;
+            margin-bottom: 0.25rem;
         }
-
-        p {
-            font-family: 'Playfair Display', serif;
+        .subtitle {
             color: #94a3b8;
-            font-size: 1.5rem;
-            margin-top: 1rem;
-            font-style: italic;
+            margin-bottom: 2rem;
         }
-
-        .glow-line {
-            height: 2px;
-            width: 60px;
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.6rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        button {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            border: none;
             background: #38bdf8;
-            margin: 2rem auto;
-            box-shadow: 0 0 15px #38bdf8;
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background: #0ea5e9;
+        }
+        #status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        #status.error {
+            color: #f87171;
+        }
+        .bank {
+            margin-bottom: 1rem;
+        }
+        .bank-name {
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+        .account {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.9rem;
+        }
+        .account-type {
+            color: #94a3b8;
+            text-transform: capitalize;
+        }
+        .hidden {
+            display: none;
+        }
+        #welcome {
+            font-size: 0.9rem;
+            color: #94a3b8;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Hello World</h1>
-        <div class="glow-line"></div>
-        <p>Welcome to the future of the web.</p>
+        <h1>Transaction Analyzer</h1>
+        <p class="subtitle">Link your bank accounts to start tracking spend.</p>
+
+        <div id="identity-card" class="card">
+            <div id="welcome" class="hidden"></div>
+            <div id="identity-form">
+                <input id="username-input" type="text" placeholder="Enter your name" />
+                <button id="create-user-btn">Continue</button>
+            </div>
+        </div>
+
+        <div id="link-card" class="card hidden">
+            <button id="link-bank-btn">Link a bank account</button>
+            <div id="status"></div>
+        </div>
+
+        <div id="accounts-card" class="card hidden">
+            <h2 style="margin-top:0; font-size:1.1rem;">Linked accounts</h2>
+            <div id="accounts-list"></div>
+        </div>
     </div>
+
+    <script src="app.js"></script>
 </body>
 </html>
