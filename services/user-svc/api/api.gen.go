@@ -36,11 +36,19 @@ type GetUserResponse struct {
 	Username  string `json:"username"`
 }
 
+// GetUserByUsernameParams defines parameters for GetUserByUsername.
+type GetUserByUsernameParams struct {
+	Username string `form:"username" json:"username"`
+}
+
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = CreateUserRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Get a user by username
+	// (GET /v1/users)
+	GetUserByUsername(c *gin.Context, params GetUserByUsernameParams)
 	// Create a new user
 	// (POST /v1/users)
 	CreateUser(c *gin.Context)
@@ -57,6 +65,39 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
+
+// GetUserByUsername operation middleware
+func (siw *ServerInterfaceWrapper) GetUserByUsername(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetUserByUsernameParams
+
+	// ------------- Required query parameter "username" -------------
+
+	if paramValue := c.Query("username"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument username is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "username", c.Request.URL.Query(), &params.Username)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter username: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetUserByUsername(c, params)
+}
 
 // CreateUser operation middleware
 func (siw *ServerInterfaceWrapper) CreateUser(c *gin.Context) {
@@ -122,6 +163,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
+	router.GET(options.BaseURL+"/v1/users", wrapper.GetUserByUsername)
 	router.POST(options.BaseURL+"/v1/users", wrapper.CreateUser)
 	router.GET(options.BaseURL+"/v1/users/:userID", wrapper.GetUser)
 }
@@ -129,15 +171,15 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7STT2/bMAzFv4rA7SjUzpZdfNtWoMht2LBTURSqzSQqYkml6AxB4O8+kE6aP84KBFhP",
-	"UWTq8en9qC3UsU0xYOAM1RZyvcTW6fI7oWP8nZF+4kuHmWUzUUxI7FFLuowUXIuy5k1CqCAz+bCAvrdA",
-	"+NJ5wgaq+0Plg91XxqdnrBl6e9IppxgyXm716JujTj4wLpBE4DofImPfdnSH/LadWi03j44v9LTv6NYe",
-	"tx5bFwUf5lG0G8w1+cQ+Bqjg649ZNrx0bFoX3AKNSBrfYGDPG0NYR2oyWGDPK5GUAMwvpLWvpe0aKQ9K",
-	"k5vyppSLxITBJQ8VfNYtC8nxUvMp1pNCGuifFIfhkQCd2Jk1UB1Rh+HWmPlbbDYabwyMQQ+5lFa+1mPF",
-	"cxYD+ymV1UfCOVTwoTiMcbGb4WI8wP1pwEwd6sZAWb1+KifvYmA3SOrgFIzmvIMqqU7LckxvFtZu5RtD",
-	"+5tY+HKpTnghGSSKpOOUu7Z1tHnN2zgT8I/C1++voIqt/MxuexFd4AVgu0ehmMm1yIr3fgteOgt6sDAM",
-	"NgxacJ62PUrufPQfRiTK/0bi/D3/C8M8duEqCNNyOq5TqRD5IHctqztk44YX+rQxs1sx3P8NAAD//8wB",
-	"62OsBQAA",
+	"H4sIAAAAAAAC/+xUQW7bMBD8CrHtkYicNr3o1tRAoVvRIqcgCBhxbTOwSHq5ciEY+nuxlBPZtZrAQHLr",
+	"yTS1mhnOcLSDOjQxePScoNxBqlfYmLz8RmgYbxLST9y0mFg2I4WIxA7zSJuQvGlQ1txFhBISk/NL6HsN",
+	"hJvWEVoob8fJO/00GR4esWbo9RFTisEnnKa6d/aAyXnGJZIAnKdDYPTLir4jvyynzpLtveEJTv2OavUh",
+	"9al0QXB+EQTbYqrJRXbBQwlff1RJ8cqwaow3S1QCqZxFz447RVgHsgk0sOO1QIoB6hfS1tVCu0VKA9Ll",
+	"xexiJgcJEb2JDkr4nLc0RMOr7E+xvSyEIP9ZYnZJ/DOiprJQPll83d2MR4uGTIOcX7vdgRO2TYvUgYbB",
+	"sUMjRqeYWtT7uzvl6p0MD1FmQZ9msxxi8Iw+azMxrl2d1RWPSY65O8D7SLiAEj4UY1mKfVOKv69KjuDY",
+	"+uzkIrTeimtXA/nxSOW3Zu2son3V8tzV6VyG8oFHuC9TcBIbkkKiQPlWpbZpDHWD78oM4T906tnOXkMM",
+	"aSKnsZx7yzHxdbDdmxl4+p3pj3sg6fYnCV6+i4BXQtx375wYz81nUKOM8vg7x5OfP/ep2MlPNe9fK9Y/",
+	"6iQNPW5TNf/fpTfpUjUXwf2fAAAA///UjARpUwcAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

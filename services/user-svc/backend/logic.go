@@ -11,6 +11,7 @@ import (
 
 var CreateUserQuery = "INSERT INTO users (username) VALUES (?)"
 var GetUserQuery = "SELECT id, username, created_at FROM users WHERE id = (?)"
+var GetUserByUsernameQuery = "SELECT id, username, created_at FROM users WHERE username = (?)"
 
 // ErrUserNotFound indicates no user exists with the requested ID.
 var ErrUserNotFound = errors.New("user not found")
@@ -52,6 +53,26 @@ func (s *UserService) GetUser(userID int) (api.GetUserResponse, error) {
 	var createdAt string
 
 	err := s.DB.QueryRow(GetUserQuery, userID).Scan(&resp.UserId, &resp.Username, &createdAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return resp, ErrUserNotFound
+		}
+		return resp, err
+	}
+
+	resp.CreatedAt = createdAt
+	return resp, nil
+}
+
+// GetUserByUsername fetches a user by username - used for "log back in as
+// yourself" without a real auth system: re-entering the same name resolves
+// to the same existing user_id instead of creating a new one.
+func (s *UserService) GetUserByUsername(username string) (api.GetUserResponse, error) {
+	var resp api.GetUserResponse
+	var createdAt string
+
+	username = strings.TrimSpace(username)
+	err := s.DB.QueryRow(GetUserByUsernameQuery, username).Scan(&resp.UserId, &resp.Username, &createdAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return resp, ErrUserNotFound

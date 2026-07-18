@@ -57,3 +57,13 @@ func (h *UserHandler) GetUser(c *gin.Context, userID string) {
 	}
 	c.JSON(http.StatusOK, resp)
 }
+
+// GetUserByUsername implements api.ServerInterface.
+func (h *UserHandler) GetUserByUsername(c *gin.Context, params api.GetUserByUsernameParams) {
+	resp, err := h.Service.GetUserByUsername(params.Username)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}

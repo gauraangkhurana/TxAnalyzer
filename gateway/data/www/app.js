@@ -1,5 +1,7 @@
 const identityForm = document.getElementById('identity-form');
 const welcomeEl = document.getElementById('welcome');
+const welcomeTextEl = document.getElementById('welcome-text');
+const logoutBtn = document.getElementById('logout-btn');
 const usernameInput = document.getElementById('username-input');
 const createUserBtn = document.getElementById('create-user-btn');
 const linkCard = document.getElementById('link-card');
@@ -155,9 +157,34 @@ function getUserId() {
 
 function showIdentified(username) {
   identityForm.classList.add('hidden');
-  welcomeEl.textContent = `Welcome back, ${username}.`;
+  welcomeTextEl.textContent = `Welcome back, ${username}.`;
   welcomeEl.classList.remove('hidden');
   linkCard.classList.remove('hidden');
+}
+
+// Log out is UI-only: clears the local session and resets every
+// identity-scoped card so no stale data from this user lingers on screen.
+// Nothing is deleted server-side - the same name logs back into the same
+// account via the find-or-create flow in createUser().
+function logout() {
+  localStorage.removeItem('userId');
+  localStorage.removeItem('username');
+
+  welcomeEl.classList.add('hidden');
+  identityForm.classList.remove('hidden');
+  usernameInput.value = '';
+
+  [linkCard, accountsCard, pullCard, transactionsCard, categorizeCard].forEach((card) =>
+    card.classList.add('hidden'),
+  );
+  accountsList.innerHTML = '';
+  accountSelect.innerHTML = '';
+  accountOptions = [];
+  transactionsBody.innerHTML = '';
+  categorizeResults.classList.add('hidden');
+  setStatus('');
+  setPullStatus('');
+  setCategorizeStatus('');
 }
 
 async function loadAccounts() {
@@ -401,6 +428,25 @@ async function categorizeSpend() {
   }
 }
 
+// A 404 here is an expected outcome ("no user with this name yet"), not a
+// real error - so this bypasses apiRequest's throw-on-any-non-ok behavior
+// and checks the status directly instead.
+async function findOrCreateUser(username) {
+  const found = await fetch(`/v1/users?username=${encodeURIComponent(username)}`, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (found.ok) return found.json();
+  if (found.status !== 404) {
+    const body = await found.json().catch(() => ({}));
+    throw new Error(body.error || `Request failed (${found.status})`);
+  }
+
+  return apiRequest('/v1/users', {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  });
+}
+
 async function createUser() {
   const username = usernameInput.value.trim();
   if (!username) {
@@ -410,14 +456,11 @@ async function createUser() {
 
   createUserBtn.disabled = true;
   try {
-    const user = await apiRequest('/v1/users', {
-      method: 'POST',
-      body: JSON.stringify({ username }),
-    });
+    const user = await findOrCreateUser(username);
     localStorage.setItem('userId', String(user.user_id));
     localStorage.setItem('username', user.username);
     showIdentified(user.username);
-    await loadAccounts();
+    await Promise.all([loadAccounts(), loadTransactions()]);
   } catch (err) {
     setStatus(err.message, true);
   } finally {
@@ -477,6 +520,7 @@ async function linkBank() {
 }
 
 createUserBtn.addEventListener('click', createUser);
+logoutBtn.addEventListener('click', logout);
 linkBankBtn.addEventListener('click', linkBank);
 pullBtn.addEventListener('click', pullTransactions);
 categorizeBtn.addEventListener('click', categorizeSpend);
