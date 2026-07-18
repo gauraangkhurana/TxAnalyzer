@@ -22,6 +22,7 @@ const categorizeResults = document.getElementById('categorize-results');
 const pieChartEl = document.getElementById('pie-chart');
 const categoryLegendEl = document.getElementById('category-legend');
 const categoryBarsEl = document.getElementById('category-bars');
+const chartTooltipEl = document.getElementById('chart-tooltip');
 
 let accountOptions = [];
 
@@ -65,6 +66,56 @@ function foldToPaletteSize(categories) {
     { category: 'Other', amount: 0, count: 0, percentage: 0 },
   );
   return [...kept, other];
+}
+
+// --- Chart tooltip (shared by the pie slices and the bar rows) ---
+
+function showChartTooltip(x, y, category, amount, percentage) {
+  chartTooltipEl.innerHTML = '';
+
+  const value = document.createElement('div');
+  value.className = 'tooltip-value';
+  value.textContent = `$${amount.toFixed(2)}`;
+  chartTooltipEl.appendChild(value);
+
+  const label = document.createElement('div');
+  label.className = 'tooltip-label';
+  label.textContent = `${formatCategoryName(category)} · ${percentage.toFixed(1)}%`;
+  chartTooltipEl.appendChild(label);
+
+  chartTooltipEl.style.left = `${x}px`;
+  chartTooltipEl.style.top = `${y}px`;
+  chartTooltipEl.classList.remove('hidden');
+}
+
+function hideChartTooltip() {
+  chartTooltipEl.classList.add('hidden');
+}
+
+// --- SVG pie slice geometry (0-100 viewBox, center 50,50, radius 48) ---
+
+const PIE_CENTER = 50;
+const PIE_RADIUS = 48;
+
+function polarToCartesian(angleDeg) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return {
+    x: PIE_CENTER + PIE_RADIUS * Math.cos(rad),
+    y: PIE_CENTER + PIE_RADIUS * Math.sin(rad),
+  };
+}
+
+function pieSlicePath(startPct, endPct) {
+  // A full-circle slice (one category = 100%) needs a special case: SVG
+  // arcs can't span a full 360 degrees in one command.
+  if (endPct - startPct >= 100) {
+    const top = { x: PIE_CENTER, y: PIE_CENTER - PIE_RADIUS };
+    return `M ${PIE_CENTER} ${PIE_CENTER} L ${top.x} ${top.y} A ${PIE_RADIUS} ${PIE_RADIUS} 0 1 1 ${top.x - 0.01} ${top.y} Z`;
+  }
+  const start = polarToCartesian(endPct * 3.6);
+  const end = polarToCartesian(startPct * 3.6);
+  const largeArc = endPct - startPct > 50 ? 1 : 0;
+  return `M ${PIE_CENTER} ${PIE_CENTER} L ${start.x} ${start.y} A ${PIE_RADIUS} ${PIE_RADIUS} 0 ${largeArc} 0 ${end.x} ${end.y} Z`;
 }
 
 function setPullStatus(message, isError) {
@@ -226,44 +277,102 @@ async function pullTransactions() {
   }
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 function renderCategorySpend(rawCategories) {
   const categories = foldToPaletteSize(rawCategories);
 
+  pieChartEl.replaceChildren();
+  categoryLegendEl.replaceChildren();
+  categoryBarsEl.replaceChildren();
+
+  // Every category needs its slice, its legend row, and its bar row to
+  // agree on the same color and highlight together on hover - built in one
+  // pass so they can never drift apart.
   let cumulative = 0;
-  const stops = categories.map((c, i) => {
-    const start = cumulative;
-    cumulative += c.percentage;
-    return `${SERIES_COLORS[i]} ${start}% ${cumulative}%`;
-  });
-  pieChartEl.style.background = `conic-gradient(${stops.join(', ')})`;
-
-  categoryLegendEl.innerHTML = '';
-  categoryBarsEl.innerHTML = '';
-
   categories.forEach((c, i) => {
     const color = SERIES_COLORS[i];
     const label = formatCategoryName(c.category);
+    const start = cumulative;
+    cumulative += c.percentage;
 
+    // --- pie slice ---
+    const slice = document.createElementNS(SVG_NS, 'path');
+    slice.setAttribute('d', pieSlicePath(start, cumulative));
+    slice.style.fill = color;
+    slice.classList.add('pie-slice');
+    pieChartEl.appendChild(slice);
+
+    // --- legend row ---
     const legendRow = document.createElement('div');
     legendRow.className = 'legend-row';
-    legendRow.innerHTML = `
-      <span class="legend-swatch" style="background:${color}"></span>
-      <span class="legend-label">${label}</span>
-      <span class="legend-amount">$${c.amount.toFixed(2)} (${c.percentage.toFixed(1)}%)</span>
-    `;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'legend-swatch';
+    swatch.style.background = color;
+    legendRow.appendChild(swatch);
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'legend-label';
+    labelEl.textContent = label;
+    legendRow.appendChild(labelEl);
+
+    const amountEl = document.createElement('span');
+    amountEl.className = 'legend-amount';
+    amountEl.textContent = `$${c.amount.toFixed(2)} (${c.percentage.toFixed(1)}%)`;
+    legendRow.appendChild(amountEl);
+
     categoryLegendEl.appendChild(legendRow);
 
+    // --- bar row ---
     const barRow = document.createElement('div');
-    barRow.innerHTML = `
-      <div class="bar-row-label">
-        <span>${label}</span>
-        <span>$${c.amount.toFixed(2)} (${c.percentage.toFixed(1)}%)</span>
-      </div>
-      <div class="bar-track">
-        <div class="bar-fill" style="width:${c.percentage}%; background:${color}"></div>
-      </div>
-    `;
+    barRow.className = 'bar-row';
+
+    const barLabel = document.createElement('div');
+    barLabel.className = 'bar-row-label';
+    const barLabelName = document.createElement('span');
+    barLabelName.textContent = label;
+    const barLabelAmount = document.createElement('span');
+    barLabelAmount.textContent = `$${c.amount.toFixed(2)} (${c.percentage.toFixed(1)}%)`;
+    barLabel.appendChild(barLabelName);
+    barLabel.appendChild(barLabelAmount);
+    barRow.appendChild(barLabel);
+
+    const barTrack = document.createElement('div');
+    barTrack.className = 'bar-track';
+    const barFill = document.createElement('div');
+    barFill.className = 'bar-fill';
+    barFill.style.width = `${c.percentage}%`;
+    barFill.style.background = color;
+    barTrack.appendChild(barFill);
+    barRow.appendChild(barTrack);
+
     categoryBarsEl.appendChild(barRow);
+
+    // --- hover: tooltip + cross-highlight the slice and legend row together ---
+    const highlight = (on) => {
+      slice.classList.toggle('slice-hover', on);
+      legendRow.classList.toggle('slice-hover', on);
+    };
+    const onEnter = (e) => {
+      highlight(true);
+      showChartTooltip(e.clientX, e.clientY, c.category, c.amount, c.percentage);
+    };
+    const onMove = (e) => showChartTooltip(e.clientX, e.clientY, c.category, c.amount, c.percentage);
+    const onLeave = () => {
+      highlight(false);
+      hideChartTooltip();
+    };
+
+    slice.addEventListener('pointerenter', onEnter);
+    slice.addEventListener('pointermove', onMove);
+    slice.addEventListener('pointerleave', onLeave);
+    legendRow.addEventListener('pointerenter', onEnter);
+    legendRow.addEventListener('pointermove', onMove);
+    legendRow.addEventListener('pointerleave', onLeave);
+    barRow.addEventListener('pointerenter', onEnter);
+    barRow.addEventListener('pointermove', onMove);
+    barRow.addEventListener('pointerleave', onLeave);
   });
 
   categorizeResults.classList.remove('hidden');

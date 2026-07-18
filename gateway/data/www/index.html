@@ -153,6 +153,9 @@
             font-size: 0.7rem;
             color: #fbbf24;
         }
+        #categorize-results {
+            margin-top: 1.5rem;
+        }
         .category-viz {
             display: flex;
             gap: 2rem;
@@ -163,8 +166,19 @@
         .pie-chart {
             width: 180px;
             height: 180px;
-            border-radius: 50%;
             flex-shrink: 0;
+            overflow: visible;
+        }
+        .pie-slice {
+            stroke: #1e293b;
+            stroke-width: 1;
+            cursor: pointer;
+            transition: filter 0.1s, transform 0.1s;
+            transform-origin: 50px 50px;
+        }
+        .pie-slice:hover, .pie-slice.slice-hover {
+            filter: brightness(1.2);
+            transform: scale(1.03);
         }
         .category-legend {
             flex: 1;
@@ -174,8 +188,14 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.3rem 0;
+            padding: 0.4rem 0.3rem;
             font-size: 0.85rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .legend-row:hover, .legend-row.slice-hover {
+            background: rgba(255, 255, 255, 0.06);
         }
         .legend-swatch {
             width: 12px;
@@ -195,6 +215,15 @@
             flex-direction: column;
             gap: 0.7rem;
         }
+        .bar-row {
+            padding: 0.3rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .bar-row:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
         .bar-row-label {
             display: flex;
             justify-content: space-between;
@@ -210,6 +239,31 @@
         .bar-fill {
             height: 100%;
             border-radius: 5px;
+            transition: filter 0.1s;
+        }
+        .bar-row:hover .bar-fill {
+            filter: brightness(1.2);
+        }
+        .chart-tooltip {
+            position: fixed;
+            pointer-events: none;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 0.5rem 0.7rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            transform: translate(-50%, -110%);
+        }
+        .chart-tooltip .tooltip-value {
+            font-weight: 700;
+            font-size: 0.95rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .chart-tooltip .tooltip-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 0.15rem;
         }
     </style>
 </head>
@@ -271,13 +325,15 @@
             <div id="categorize-status"></div>
             <div id="categorize-results" class="hidden">
                 <div class="category-viz">
-                    <div id="pie-chart" class="pie-chart"></div>
+                    <svg id="pie-chart" class="pie-chart" viewBox="0 0 100 100"></svg>
                     <div id="category-legend" class="category-legend"></div>
                 </div>
                 <div id="category-bars" class="category-bars"></div>
             </div>
         </div>
     </div>
+
+    <div id="chart-tooltip" class="chart-tooltip hidden"></div>
 
     <script src="app.js"></script>
 </body>
